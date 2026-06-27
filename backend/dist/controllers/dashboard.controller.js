@@ -184,7 +184,10 @@ class DashboardController {
         try {
             const userId = req.user?.id;
             const { githubUsername, leetcodeUsername } = req.body;
-            const userRec = await prisma.user.findUnique({ where: { id: userId } });
+            const userRec = await prisma.user.findUnique({
+                where: { id: userId },
+                include: { leetcodeMetrics: true, githubMetrics: true }
+            });
             let targetGithubUsername = githubUsername;
             if (!targetGithubUsername && userRec?.githubToken) {
                 targetGithubUsername = "me";
@@ -245,17 +248,21 @@ class DashboardController {
                     }
                 });
             }
-            // Award XP for sync action
-            const user = await prisma.user.findUnique({ where: { id: userId } });
-            if (user) {
-                const syncXp = 50;
-                await prisma.user.update({
-                    where: { id: userId },
-                    data: {
-                        xp: user.xp + syncXp,
-                        level: Math.floor((user.xp + syncXp) / 1000) + 1
-                    }
-                });
+            // Award XP ONLY for the first-time sync
+            const isFirstLcSync = leetcodeUsername && (!userRec || !userRec.leetcodeMetrics);
+            const isFirstGhSync = targetGithubUsername && (!userRec || !userRec.githubMetrics);
+            if (isFirstLcSync || isFirstGhSync) {
+                const user = await prisma.user.findUnique({ where: { id: userId } });
+                if (user) {
+                    const syncXp = (isFirstLcSync && isFirstGhSync) ? 100 : 50;
+                    await prisma.user.update({
+                        where: { id: userId },
+                        data: {
+                            xp: user.xp + syncXp,
+                            level: Math.floor((user.xp + syncXp) / 1000) + 1
+                        }
+                    });
+                }
             }
             res.status(200).json({
                 success: true,
