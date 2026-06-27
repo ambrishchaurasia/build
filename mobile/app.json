@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BUILD | Tracker for Devs",
+    "name": "BUILD",
     "slug": "BUILD",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -40,6 +40,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6d2550f1-0d13-4074-9e9b-e1c4a8ad664d"
+      }
     }
   }
 }
