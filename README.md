@@ -12,7 +12,7 @@
 
 ---
 
-## 📥 Download
+## Download
 
 You can download and install the fully functional Android APK right now! 
 
@@ -21,4 +21,4 @@ You can download and install the fully functional Android APK right now!
 3. Open it on your Android phone to install, and start tracking!
 
 ---
-*crafted_by_ambrish*
+*ambrishified*
