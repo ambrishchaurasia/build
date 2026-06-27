@@ -84,10 +84,21 @@ export default function Login() {
       }
     } catch (err: any) {
       console.error("[Login Error]", err);
-      setError(
-        err.response?.data?.message || 
-        "Authentication failed. Please verify your credentials or server connection."
-      );
+      
+      if (!err.response) {
+        const { API_URL } = require('../services/apiClient');
+        setError(`Network Error: ${err.message}. Target: ${API_URL}`);
+      } else {
+        const data = err.response?.data;
+        if (data?.message === "Validation failed" && data?.errors?.length > 0) {
+          setError(data.errors.map((e: any) => e.message).join("\n"));
+        } else {
+          setError(
+            data?.message ||
+            "Login failed. Please check your credentials."
+          );
+        }
+      }
     } finally {
       setLoading(false);
     }

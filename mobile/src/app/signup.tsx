@@ -55,10 +55,21 @@ export default function Signup() {
       }
     } catch (err: any) {
       console.error("[Signup Error]", err);
-      setError(
-        err.response?.data?.message ||
-        "Registration failed. Username may already be taken or server is offline."
-      );
+      
+      if (!err.response) {
+        const { API_URL } = require('../services/apiClient');
+        setError(`Network Error: ${err.message}. Target: ${API_URL}`);
+      } else {
+        const data = err.response?.data;
+        if (data?.message === "Validation failed" && data?.errors?.length > 0) {
+          setError(data.errors.map((e: any) => e.message).join("\n"));
+        } else {
+          setError(
+            data?.message ||
+            "Registration failed. Username may already be taken."
+          );
+        }
+      }
     } finally {
       setLoading(false);
     }

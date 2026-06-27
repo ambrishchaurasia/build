@@ -5,7 +5,7 @@ import { router } from "expo-router";
 // For an Android emulator, 10.0.2.2 points to host's localhost. 
 // For a physical device or iOS simulator, this should be your local IP address.
 // NOTE: Base URL is set to the host root because all API requests prepend "/api"
-let API_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:5000";
+export let API_URL = process.env.EXPO_PUBLIC_API_URL || "https://build-gbiq.onrender.com";
 if (API_URL.endsWith("/")) {
   API_URL = API_URL.slice(0, -1);
 }
@@ -14,6 +14,7 @@ console.log("[apiClient] Resolved API_URL as:", API_URL);
 
 const apiClient = axios.create({
   baseURL: API_URL,
+  timeout: 65000, // 65 seconds to allow Render's free tier to wake up from sleep
   headers: {
     "Content-Type": "application/json",
     "bypass-tunnel-reminder": "true"
@@ -43,8 +44,12 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
-      // Clear token and redirect to login if unauthorized
+    // Only redirect to login if the request was not to the auth endpoints
+    const originalRequestUrl = error.config?.url || "";
+    const isAuthEndpoint = originalRequestUrl.includes("/api/auth/login") || originalRequestUrl.includes("/api/auth/signup");
+    
+    if (error.response && error.response.status === 401 && !isAuthEndpoint) {
+      // Clear token and redirect to login if unauthorized and not actively trying to log in
       try {
         await AsyncStorage.removeItem("token");
         router.replace("/login");
