@@ -1,0 +1,144 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             String          @id @default(uuid())
+  name           String
+  email          String          @unique
+  password       String
+  avatar         String?
+  provider       String          @default("local") // local, github, google
+  xp             Int             @default(0)
+  level          Int             @default(1)
+  tokens         Int             @default(0)
+  streakDays     Int             @default(0)
+  lastActiveDate DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  profile        StudentProfile?
+  githubMetrics  GithubMetrics?
+  leetcodeMetrics LeetcodeMetrics?
+  projectMetrics ProjectMetrics?
+  goals          Goal[]
+  weeklyReports  WeeklyReport[]
+  insights       AgentInsight[]
+  githubToken    String?
+  googleFitToken String?
+  fitnessMetrics FitnessMetrics?
+}
+
+model StudentProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  careerGoal          String   // Software Engineer, Data Scientist, AI Engineer, ML Engineer, Product Manager, Research Engineer
+  semester            Int
+  cgpa                Float
+  targetPlacementYear Int
+  targetCompanyType   String   // FAANG, Startup, FinTech, Research
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Goal {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      String    // CODING, PROJECT, FITNESS_MIND, HABIT
+  title         String    // e.g. "POTD", "100 pullups", "Meditation of Ganesh Ji", "No Fap"
+  description   String?
+  frequency     String    // DAILY, WEEKLY
+  isActive      Boolean   @default(true)
+  currentStreak Int       @default(0)
+  maxStreak     Int       @default(0)
+  lastCompleted DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  logs          GoalLog[]
+}
+
+model GoalLog {
+  id          String   @id @default(uuid())
+  goalId      String
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+}
+
+model GithubMetrics {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalRepos        Int      @default(0)
+  activeRepos       Int      @default(0)
+  commitsLast30Days Int      @default(0)
+  pullRequests      Int      @default(0)
+  contributions     Int      @default(0)
+  lastSync          DateTime @default(now())
+}
+
+model LeetcodeMetrics {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username     String?
+  totalSolved  Int      @default(0)
+  easySolved   Int      @default(0)
+  mediumSolved Int      @default(0)
+  hardSolved   Int      @default(0)
+  contestRating Float    @default(0.0)
+  ranking      Int      @default(0)
+  lastSync     DateTime @default(now())
+}
+
+model ProjectMetrics {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectScore      Int      @default(0)
+  deploymentCount   Int      @default(0)
+  activeProjects    Int      @default(0)
+  completedProjects Int      @default(0)
+  lastUpdated       DateTime @default(now())
+}
+
+model AgentInsight {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentType      String   // CODING, PROJECT, LIFE
+  score          Int
+  insight        String   // JSON string or long text
+  recommendation String   // JSON string or long text
+  createdAt      DateTime @default(now())
+}
+
+model WeeklyReport {
+  id                      String   @id @default(uuid())
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart               DateTime
+  weekEnd                 DateTime
+  placementReadinessScore Int
+  lifeBalanceScore        Int
+  wins                    String   // JSON Array of string wins
+  weaknesses              String   // JSON Array of string weaknesses
+  recommendations         String   // JSON Array of string recommendations
+  nextWeekPlan            String   // JSON Object action plan
+  generatedAt             DateTime @default(now())
+}
+
+model FitnessMetrics {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutDays    Int      @default(0)
+  steps          Int      @default(0)
+  workoutMinutes Int      @default(0)
+  lastUpdated    DateTime @default(now())
+}

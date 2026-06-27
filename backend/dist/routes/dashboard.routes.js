@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const dashboard_controller_1 = require("../controllers/dashboard.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const validators_1 = require("../utils/validators");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.get("/", dashboard_controller_1.DashboardController.getDashboardData);
+router.post("/sync", dashboard_controller_1.DashboardController.syncMetrics);
+router.post("/sync/googlefit", dashboard_controller_1.DashboardController.syncGoogleFit);
+router.post("/goals", (0, validators_1.validate)(validators_1.goalSchema), dashboard_controller_1.DashboardController.createGoal);
+router.post("/goals/:goalId/toggle", dashboard_controller_1.DashboardController.toggleGoalCompletion);
+router.delete("/goals/:goalId", dashboard_controller_1.DashboardController.deleteGoal);
+exports.default = router;

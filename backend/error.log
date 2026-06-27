@@ -1,0 +1,12 @@
+
+[2026-06-25T08:20:51.349Z] 401 - Unauthorized access
+
+[2026-06-25T08:21:45.683Z] 400 - GitHub error: The code passed is incorrect or expired.
+
+[2026-06-25T08:26:23.166Z] 500 - Request failed with status code 400
+
+[2026-06-25T08:29:32.659Z] 500 - Request failed with status code 400
+
+[2026-06-25T08:33:26.017Z] 400 - GitHub error: A code_verifier was not included, but the authorization request included a code_challenge. Codes requested with a code_challenge MUST be redeemed with a code_verifier.
+
+[2026-06-25T09:31:06.670Z] 401 - Invalid email or password
