@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BUILD",
-    "slug": "BUILD",
+    "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -24,14 +24,11 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "splash": {
+      "backgroundColor": "#0A0A0A"
+    },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#0A0A0A"
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true,
