@@ -17,7 +17,7 @@
 You can download and install the fully functional Android APK right now! 
 
 1. Go to the **[Releases](../../releases)** page on the right side of this repository.
-2. Download the `BUILD-v1.0.0.apk` file.
+2. Download the `BUILD-v0.0.1.apk` file.
 3. Open it on your Android phone to install, and start tracking!
 
 ---
