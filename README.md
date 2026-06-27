@@ -1,112 +1,79 @@
-# StudentOS AI
+# BUILD - The Gamified Developer Tracker
 
-StudentOS AI is a gamified **Habit Tracker & Board of Advisors for Engineering Students**. It integrates automated metrics from LeetCode (solved counters, ranking) and GitHub (commits calendar, repo statistics) alongside subjective, user-defined discipline and fitness goals (POTD, pulling streaks, meditation, No Fap).
+BUILD is a gamified **Habit Tracker & Productivity App for Developers**. It integrates automated metrics from LeetCode (solved counters, ranking) and GitHub (commits calendar, repo statistics) alongside subjective, user-defined discipline and fitness goals (Daily Tasks, Projects, Fitness, and Habits).
 
-AI specialist mentors (Coding Mentor, Project Advisor) and a Master Agent (Life Strategist) analyze this combined data weekly, dynamically generating focus priority weights, wins, neglect risks, and structured action plans to optimize placement readiness.
+The app features a beautiful, dynamic mobile UI that turns your daily developer life into a quest-based RPG, allowing you to track your momentum, maintain streaks, and level up your developer persona.
 
 ---
 
 ## Technical Architecture
 
-* **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4.0, React Router, Recharts, Axios, and TanStack React Query.
-* **Backend**: Node.js, Express.js, TypeScript, Prisma ORM, and OpenAI API.
-* **Database**: SQLite (configured for zero-setup local execution, easily swappable to PostgreSQL via `prisma/schema.prisma`).
+* **Mobile App (Frontend)**: React Native, Expo (Expo Router), TypeScript, NativeWind (Tailwind CSS for React Native), and Axios.
+* **Backend API**: Node.js, Express.js, TypeScript, and Prisma ORM.
+* **Database**: PostgreSQL (Hosted on Render) or local SQLite for development.
 
 ---
 
 ## Directory Structure
 
 ```
-studentos-ai/
+build-tracker/
 ├── backend/
-│   ├── prisma/             # Schema definitions and SQLite db files
+│   ├── prisma/             # Schema definitions
 │   ├── src/
-│   │   ├── agents/         # AI Advisors (Coding, Project, Life Strategist)
 │   │   ├── controllers/    # Express REST API controllers
-│   │   ├── middlewares/    # Authentication & Error middlewares
 │   │   ├── routes/         # Router definitions
-│   │   ├── services/       # GitHub, LeetCode, Scoring, and Report layers
-│   │   └── seed.ts         # Seeding script for 10 simulated student profiles
-│   └── tsconfig.json
+│   │   └── services/       # GitHub, LeetCode, and Scoring services
+│   └── .env                # Backend environment variables
 │
-├── frontend/
+├── mobile/
 │   ├── src/
-│   │   ├── pages/          # Arenas (LeetCode, Projects, Fitness, Habits, Coach)
-│   │   ├── services/       # Axios API integration clients
-│   │   ├── App.tsx         # Layout controller
-│   │   └── main.tsx        # Mount configuration
-│   ├── vite.config.ts      # Vite proxy configurations
-│   └── index.html          # Google Fonts & boilerplate
+│   │   ├── app/            # Expo Router screens & layouts (tabs, login)
+│   │   ├── components/     # UI Components (DailyTasks, OnboardingTour, AccountArena)
+│   │   └── services/       # Axios API integration clients
+│   ├── app.json            # Expo configuration
+│   └── .env                # Mobile environment variables
 │
 └── README.md               # This instructions file
 ```
 
 ---
 
-## Step-by-Step Local Setup
+## How to Run Locally
 
-Follow these commands to run StudentOS AI on your system.
-
-### 1. Database Initialization (Backend)
-Navigate to the `backend/` directory, configure your environment, create the database, and seed the profiles:
+### 1. Launch Backend API Server
+Navigate to the `backend/` directory, set up your `.env`, and start the server:
 
 ```bash
-# Navigate to backend
 cd backend
-
-# Create .env configuration file (optional for OpenAI)
-# If OPENAI_API_KEY is not defined, the app falls back to a high-fidelity local advisor engine!
-echo JWT_SECRET=studentos-ai-super-secret-key > .env
-echo PORT=5000 >> .env
-
-# Generate Prisma Client & push local SQLite database
+npm install
 npx prisma generate
 npx prisma db push
-
-# Populate database with 10 mock students (includes 4 weeks of historical reports!)
-npm run db:seed
-```
-
-### 2. Launch Backend API Server
-Start the development server (runs nodemon with hot-reloads):
-
-```bash
-# In backend directory
 npm run dev
 ```
-The backend server runs on `http://localhost:5000`. You can access the Prisma database visual interface by running `npx prisma studio`.
+The backend server runs on `http://localhost:5000`.
 
-### 3. Launch Frontend React Application
-Open a new terminal window, navigate to the `frontend/` directory, install packages, and boot Vite:
+### 2. Launch Mobile App (Expo)
+Open a new terminal window, navigate to the `mobile/` directory, install packages, and boot Expo:
 
 ```bash
-# Navigate to frontend
-cd frontend
-
-# Install dependencies
-npm install --legacy-peer-deps
-
-# Start Vite dev server
-npm run dev
+cd mobile
+npm install
+npx expo start
 ```
-The React client runs on `http://localhost:5173`. Vite is pre-configured to proxy `/api` routes straight to the Express backend.
+Scan the QR code shown in your terminal using the **Expo Go** app on your iOS or Android device to instantly run the app on your phone.
 
 ---
 
-## Demo Profiles for Testing
+## Building the APK (Android)
 
-The seeding script generates **10 student profiles** with historical completion charts. Use the following credentials on the login screen:
+To generate a standalone APK that you can install directly on an Android device:
+```bash
+cd mobile
+eas build --platform android --profile preview
+```
+*(Note: Requires an Expo account and EAS CLI installed globally)*
 
-| Name | Email | Role | LeetCode Solved | Commit Count (30d) | Profile Type |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Aditya Sharma** | `aditya@studentos.ai` | Software Engineer | 340 | 55 | Balanced |
-| **Karan Johar** | `karan@studentos.ai` | Software Engineer | 450 | 1 | **Imbalanced (DSA Heavy)** |
-| **Sneha Patel** | `sneha@studentos.ai` | AI Engineer | 210 | 48 | AI/ML |
-| **Kabir Singh** | `kabir@studentos.ai` | Software Engineer | 45 | 4 | **Slacker** |
+---
 
-* **Password for all accounts**: `password123`
-
-### Key Scenarios to Test:
-1. **The Placement Penalty**: Log in as **Karan Johar**. Notice that although his Coding Score is extremely high, his lack of GitHub commits drops his **Placement Readiness** and **Life Balance Score** significantly. Ask the AI Coach: *"Am I placement ready?"* or *"Why is my balance score low?"*
-2. **Habit Checking**: Log in as **Aditya Sharma**. Navigate to the **Habits Board** or **LeetCode** tabs and click checkboxes to mark today's tasks as completed. Watch your Flame Streak, XP Coins, and level progress bar increment in real-time.
-3. **AI Reports**: Go to the **AI Advisor** tab, click **Generate Report** to manually compile today's stats, and click on the generated report to inspect your Wins, Neglected Risks, and next week's focus allocation chart.
+*crafted_by_ambrish*

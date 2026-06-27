@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert, Dimensions, Vibration } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, ActivityIndicator, Alert, Dimensions, Vibration, KeyboardAvoidingView, Platform } from "react-native";
 import { 
   CircleDot, GitBranch, Activity, ShieldCheck, History, PlusCircle, 
   Calendar, Flame, Dumbbell, Heart, Brain, Pill, Coffee, Gamepad2, 
@@ -8,6 +8,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { dashboardApi } from "../services/dashboardApi";
 import { isGoalActiveOnDate, isGoalCompletedOnDate } from "../utils/dateUtils";
+import OnboardingTour from "./OnboardingTour";
 
 interface DailyTasksProps {
   goals: any[];
@@ -499,7 +500,10 @@ export default function DailyTasks({ goals, onRefresh }: DailyTasksProps) {
         animationType="slide"
         onRequestClose={() => setAddingQuest(false)}
       >
-        <View className="flex-1 bg-black/60 justify-end">
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          className="flex-1 bg-black/60 justify-end"
+        >
           <View className="w-full bg-neutral-950 border-t border-neutral-850 rounded-t-3xl p-6 pb-12">
             <View className="flex-row justify-between items-center mb-6">
               <Text className="text-base font-black text-white uppercase tracking-tight">Spawn New Quest</Text>
@@ -564,8 +568,11 @@ export default function DailyTasks({ goals, onRefresh }: DailyTasksProps) {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {/* Onboarding Guide */}
+      <OnboardingTour onComplete={() => setAddingQuest(true)} />
 
     </View>
   );

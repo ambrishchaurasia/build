@@ -366,6 +366,13 @@ export default function AccountArena({ user, telemetry, onRefresh, onLogout }: A
             </View>
           )}
         </View>
+        
+        {/* Signature */}
+        <View className="mt-8 mb-4 items-center">
+          <Text className="text-neutral-500 text-xs italic" style={{ fontStyle: 'italic' }}>
+            crafted_by_ambrish
+          </Text>
+        </View>
 
       </View>
     </View>
