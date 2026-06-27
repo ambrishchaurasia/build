@@ -5,7 +5,10 @@ import { router } from "expo-router";
 // For an Android emulator, 10.0.2.2 points to host's localhost. 
 // For a physical device or iOS simulator, this should be your local IP address.
 // NOTE: Base URL is set to the host root because all API requests prepend "/api"
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:5000";
+let API_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:5000";
+if (API_URL.endsWith("/")) {
+  API_URL = API_URL.slice(0, -1);
+}
 
 console.log("[apiClient] Resolved API_URL as:", API_URL);
 
