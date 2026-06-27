@@ -19,7 +19,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
-import { GlassView } from "expo-glass-effect";
+import { BlurView } from "expo-blur";
 
 import { authApi } from "../services/authApi";
 import { dashboardApi } from "../services/dashboardApi";
@@ -673,8 +673,7 @@ function CompletionOverlay({ visible, onClose }: CompletionOverlayProps) {
   return (
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.overlayContainer}>
-        {/* Apple-like Frosted Glass Overlay */}
-        <GlassView glassEffectStyle="regular" colorScheme="dark" style={StyleSheet.absoluteFillObject} />
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
 
         <Animated.View style={[styles.celebrationCard, cardStyle]}>
           

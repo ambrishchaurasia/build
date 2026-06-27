@@ -16,7 +16,7 @@ import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Check, User, Lock } from "lucide-react-native";
 import Svg, { Defs, RadialGradient, Stop, Circle } from "react-native-svg";
-import { GlassView } from "expo-glass-effect";
+import { BlurView } from "expo-blur";
 import { authApi } from "../services/authApi";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -109,7 +109,7 @@ export default function Signup() {
       </View>
 
       {/* 2. Apple-like Frosted Glass View */}
-      <GlassView glassEffectStyle="regular" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
 
       {/* 3. Noise grain */}
       <Image

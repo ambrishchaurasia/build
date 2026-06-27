@@ -25,7 +25,7 @@ import Animated, {
   FadeOut 
 } from "react-native-reanimated";
 import Svg, { Defs, RadialGradient, Stop, Circle } from "react-native-svg";
-import { GlassView } from "expo-glass-effect";
+import { BlurView } from "expo-blur";
 import { authApi } from "../services/authApi";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -117,7 +117,7 @@ export default function Login() {
       </Animated.View>
 
       {/* 2. Apple-like Frosted Glass View */}
-      <GlassView glassEffectStyle="regular" style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={25} tint="dark" style={StyleSheet.absoluteFillObject} />
 
       {/* 3. Tiled Film Grain Overlay */}
       <Image

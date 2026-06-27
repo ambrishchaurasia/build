@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "BUILD | Tracker for Devs",
+    "slug": "BUILD",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
