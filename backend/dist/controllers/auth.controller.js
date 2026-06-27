@@ -218,17 +218,22 @@ class AuthController {
     static async githubCallback(req, res, next) {
         try {
             const userId = req.user?.id;
-            const { code } = req.body;
+            const { code, redirectUri, codeVerifier, clientId: reqClientId } = req.body;
             if (!userId) {
                 throw new error_middleware_1.ApiError(401, "Unauthorized");
             }
             if (!code) {
                 throw new error_middleware_1.ApiError(400, "Authorization code is required");
             }
-            const clientId = process.env.GITHUB_CLIENT_ID;
-            const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+            let clientId = process.env.GITHUB_CLIENT_ID;
+            let clientSecret = process.env.GITHUB_CLIENT_SECRET;
+            // Select mobile-specific GitHub OAuth credentials if specified
+            if (reqClientId && reqClientId === process.env.MOBILE_GITHUB_CLIENT_ID) {
+                clientId = process.env.MOBILE_GITHUB_CLIENT_ID;
+                clientSecret = process.env.MOBILE_GITHUB_CLIENT_SECRET;
+            }
             if (!clientId || !clientSecret) {
-                logger_1.logger.warn("GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET not configured. Simulating GitHub link.");
+                logger_1.logger.warn("GitHub client credentials not configured. Simulating GitHub link.");
                 const simulatedToken = "simulated_github_token_" + Math.random().toString(36).substring(2, 10);
                 await prisma.user.update({
                     where: { id: userId },
@@ -243,7 +248,9 @@ class AuthController {
             const tokenRes = await axios_1.default.post("https://github.com/login/oauth/access_token", {
                 client_id: clientId,
                 client_secret: clientSecret,
-                code
+                code,
+                redirect_uri: redirectUri,
+                code_verifier: codeVerifier
             }, {
                 headers: {
                     Accept: "application/json"
@@ -251,7 +258,8 @@ class AuthController {
             });
             const githubToken = tokenRes.data?.access_token;
             if (!githubToken) {
-                throw new error_middleware_1.ApiError(400, "Failed to exchange authorization code for access token");
+                logger_1.logger.error(`GitHub OAuth error: ${JSON.stringify(tokenRes.data)}`);
+                throw new error_middleware_1.ApiError(400, `GitHub error: ${tokenRes.data?.error_description || tokenRes.data?.error || "Unknown error"}`);
             }
             await prisma.user.update({
                 where: { id: userId },
@@ -264,6 +272,10 @@ class AuthController {
             });
         }
         catch (error) {
+            if (error.isAxiosError && error.response) {
+                logger_1.logger.error(`GitHub API Error: ${JSON.stringify(error.response.data)}`);
+                return next(new error_middleware_1.ApiError(400, `GitHub error: ${error.response.data?.error_description || error.response.data?.error || "Unknown error"}`));
+            }
             next(error);
         }
     }

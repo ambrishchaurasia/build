@@ -18,6 +18,10 @@ const errorMiddleware = (err, req, res, next) => {
     const message = err.message || "Internal Server Error";
     const errors = err instanceof ApiError ? err.errors : [];
     logger_1.logger.error(`API Error: ${statusCode} - ${message}`, err);
+    try {
+        require("fs").appendFileSync("error.log", `\n[${new Date().toISOString()}] ${statusCode} - ${message}\n`);
+    }
+    catch (e) { }
     res.status(statusCode).json({
         success: false,
         message,

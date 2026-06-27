@@ -7,29 +7,63 @@ exports.LeetcodeService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const logger_1 = require("../utils/logger");
 class LeetcodeService {
-    /**
-     * Fetches LeetCode stats for a given username.
-     * Uses real LeetCode GraphQL API, falling back to simulated high-fidelity statistics if it fails.
-     */
     static async fetchUserStats(username) {
         try {
             logger_1.logger.info(`Fetching LeetCode metrics for: ${username}`);
-            const response = await axios_1.default.get(`https://leetcode-stats-api.herokuapp.com/${username}`, { timeout: 4500 });
-            const data = response.data;
-            if (data && data.status === "success") {
-                return {
-                    totalSolved: data.totalSolved || 0,
-                    easySolved: data.easySolved || 0,
-                    mediumSolved: data.mediumSolved || 0,
-                    hardSolved: data.hardSolved || 0,
-                    contestRating: 1500, // Default baseline since this API does not expose contest stats
-                    ranking: data.ranking || 0
-                };
+            const query = `
+        query getUserProfile($username: String!) {
+          matchedUser(username: $username) {
+            username
+            profile {
+              ranking
             }
-            throw new Error(data?.message || "Invalid API response status");
+            submitStats: submitStatsGlobal {
+              acSubmissionNum {
+                difficulty
+                count
+              }
+            }
+          }
+        }
+      `;
+            const response = await axios_1.default.post("https://leetcode.com/graphql", {
+                query,
+                variables: { username }
+            }, {
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
+                timeout: 8000
+            });
+            const graphqlData = response.data;
+            if (graphqlData.errors && graphqlData.errors.some((e) => e.message?.toLowerCase().includes("not exist"))) {
+                throw new Error("LeetCode user does not exist");
+            }
+            const matchedUser = graphqlData.data?.matchedUser;
+            if (!matchedUser) {
+                throw new Error("Invalid LeetCode username");
+            }
+            const acSubmissions = matchedUser.submitStats?.acSubmissionNum || [];
+            const totalSolved = acSubmissions.find((x) => x.difficulty === "All")?.count || 0;
+            const easySolved = acSubmissions.find((x) => x.difficulty === "Easy")?.count || 0;
+            const mediumSolved = acSubmissions.find((x) => x.difficulty === "Medium")?.count || 0;
+            const hardSolved = acSubmissions.find((x) => x.difficulty === "Hard")?.count || 0;
+            const ranking = matchedUser.profile?.ranking || 0;
+            return {
+                totalSolved,
+                easySolved,
+                mediumSolved,
+                hardSolved,
+                contestRating: 1500, // Default baseline since contest stats requires a separate heavy query
+                ranking
+            };
         }
         catch (error) {
-            logger_1.logger.warn(`LeetCode real API failed for ${username}, using simulation: ${error.message}`);
+            if (error.message === "LeetCode user does not exist" || error.message === "Invalid LeetCode username") {
+                throw error;
+            }
+            logger_1.logger.warn(`LeetCode GraphQL API failed for ${username}, using simulation: ${error.message}`);
             return this.generateSimulatedStats(username);
         }
     }

@@ -9,6 +9,13 @@ const placement_service_1 = require("../services/placement.service");
 const logger_1 = require("../utils/logger");
 const error_middleware_1 = require("../middlewares/error.middleware");
 const prisma = new client_1.PrismaClient();
+function isGoalActiveToday(goal) {
+    const createdDate = new Date(goal.createdAt);
+    const today = new Date();
+    const createdString = `${createdDate.getFullYear()}-${createdDate.getMonth()}-${createdDate.getDate()}`;
+    const targetString = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    return targetString === createdString;
+}
 class DashboardController {
     /**
      * Fetch complete dashboard telemetry, scores, and goals
@@ -75,15 +82,16 @@ class DashboardController {
                     : [];
                 let rec = originalRec;
                 const categoryGoals = user.goals.filter(g => {
+                    let matches = false;
                     if (agentType === "CODING")
-                        return g.category === "CODING";
-                    if (agentType === "PROJECT")
-                        return g.category === "PROJECT";
-                    if (agentType === "FITNESS")
-                        return g.category === "FITNESS_MIND";
-                    if (agentType === "HABIT")
-                        return g.category === "HABIT";
-                    return false;
+                        matches = g.category === "CODING";
+                    else if (agentType === "PROJECT")
+                        matches = g.category === "PROJECT";
+                    else if (agentType === "FITNESS")
+                        matches = g.category === "FITNESS_MIND";
+                    else if (agentType === "HABIT")
+                        matches = g.category === "HABIT";
+                    return matches && isGoalActiveToday(g);
                 });
                 if (categoryGoals.length > 0) {
                     const uncompleted = categoryGoals.filter(g => {
@@ -306,10 +314,73 @@ class DashboardController {
                 alreadyCompleted = new Date(goal.lastCompleted).toDateString() === todayStr;
             }
             if (alreadyCompleted) {
+                // Delete today's goal completion log
+                const startOfDay = new Date();
+                startOfDay.setHours(0, 0, 0, 0);
+                const endOfDay = new Date();
+                endOfDay.setHours(23, 59, 59, 999);
+                const todayLog = await prisma.goalLog.findFirst({
+                    where: {
+                        goalId,
+                        completedAt: {
+                            gte: startOfDay,
+                            lte: endOfDay
+                        }
+                    }
+                });
+                if (todayLog) {
+                    await prisma.goalLog.delete({
+                        where: { id: todayLog.id }
+                    });
+                }
+                // Find previous log date if exists to reset lastCompleted
+                const lastLog = await prisma.goalLog.findFirst({
+                    where: { goalId },
+                    orderBy: { completedAt: "desc" }
+                });
+                const prevCompletedDate = lastLog ? lastLog.completedAt : null;
+                // Decrement streak on the goal
+                const updatedGoal = await prisma.goal.update({
+                    where: { id: goalId },
+                    data: {
+                        currentStreak: Math.max(0, goal.currentStreak - 1),
+                        lastCompleted: prevCompletedDate
+                    }
+                });
+                // Deduct XP and token from User ONLY if they previously had all tasks completed
+                const user = await prisma.user.findUnique({ where: { id: userId } });
+                let pointsDeducted = 0;
+                if (user) {
+                    const allGoals = await prisma.goal.findMany({ where: { userId } });
+                    const activeGoals = allGoals.filter(g => g.isActive && isGoalActiveToday(g));
+                    // Count completed active goals today BEFORE this uncompletion.
+                    // Since the database wasn't refreshed yet, this goal was counted completed.
+                    const completedCount = activeGoals.filter(g => {
+                        if (g.id === goalId)
+                            return true;
+                        if (!g.lastCompleted)
+                            return false;
+                        return new Date(g.lastCompleted).toDateString() === todayStr;
+                    }).length;
+                    if (activeGoals.length > 0 && completedCount === activeGoals.length) {
+                        pointsDeducted = 5;
+                    }
+                    const newXp = Math.max(0, user.xp - pointsDeducted);
+                    const level = Math.floor(newXp / 1000) + 1;
+                    await prisma.user.update({
+                        where: { id: userId },
+                        data: {
+                            xp: newXp,
+                            level,
+                            tokens: Math.max(0, user.tokens - pointsDeducted)
+                        }
+                    });
+                }
                 return res.status(200).json({
                     success: true,
-                    message: "Goal already completed today",
-                    goal
+                    message: "Goal uncompleted successfully",
+                    pointsDeducted,
+                    goal: updatedGoal
                 });
             }
             // Calculate streak update
@@ -337,14 +408,29 @@ class DashboardController {
             await prisma.goalLog.create({
                 data: { goalId }
             });
-            // Award XP for completion
+            // Award XP for completion ONLY if they completed ALL tasks for today
             const user = await prisma.user.findUnique({ where: { id: userId } });
             let levelUp = false;
             let level = 1;
             let newXp = 0;
+            let pointsGained = 0;
+            let allTasksCompleted = false;
             if (user) {
-                const goalXp = 25; // +25 XP per goal
-                newXp = user.xp + goalXp;
+                const allGoals = await prisma.goal.findMany({ where: { userId } });
+                const activeGoals = allGoals.filter(g => g.isActive && isGoalActiveToday(g));
+                // Count completed other active goals today
+                const completedOtherCount = activeGoals.filter(g => {
+                    if (g.id === goalId)
+                        return false;
+                    if (!g.lastCompleted)
+                        return false;
+                    return new Date(g.lastCompleted).toDateString() === todayStr;
+                }).length;
+                if (activeGoals.length > 0 && completedOtherCount === activeGoals.length - 1) {
+                    pointsGained = 5;
+                    allTasksCompleted = true;
+                }
+                newXp = user.xp + pointsGained;
                 level = Math.floor(newXp / 1000) + 1;
                 levelUp = level > user.level;
                 // Check if we should update global login streak
@@ -371,7 +457,7 @@ class DashboardController {
                     data: {
                         xp: newXp,
                         level,
-                        tokens: user.tokens + 1, // Reward 1 Token for each quest
+                        tokens: user.tokens + pointsGained,
                         streakDays: updateStreak ? newGlobalStreak : undefined,
                         lastActiveDate: now
                     }
@@ -380,7 +466,9 @@ class DashboardController {
             res.status(200).json({
                 success: true,
                 message: "Goal completed successfully!",
-                xpGained: 25,
+                xpGained: pointsGained,
+                tokensGained: pointsGained,
+                allTasksCompleted,
                 levelUp,
                 newLevel: level,
                 newXp,
@@ -411,38 +499,51 @@ class DashboardController {
         }
     }
     /**
-     * Synchronize Google Fit metrics
+     * Synchronize Google Fit metrics or manual fitness logs
      */
     static async syncGoogleFit(req, res, next) {
         try {
             const userId = req.user?.id;
-            const { accessToken } = req.body;
-            if (!accessToken) {
-                throw new error_middleware_1.ApiError(400, "Please provide a Google Access Token to sync Fit metrics");
-            }
-            logger_1.logger.info(`Google Fit sync requested for User ${userId}`);
+            const { accessToken, steps, workoutMinutes } = req.body;
+            logger_1.logger.info(`Fitness sync requested for User ${userId}`);
             const user = await prisma.user.findUnique({ where: { id: userId } });
             if (!user) {
                 throw new error_middleware_1.ApiError(404, "User not found");
             }
-            const stats = await googlefit_service_1.GooglefitService.fetchFitnessMetrics(accessToken, user.email || "");
-            await prisma.user.update({
-                where: { id: userId },
-                data: { googleFitToken: accessToken }
-            });
+            let finalSteps = 0;
+            let finalMinutes = 0;
+            let finalDays = 0;
+            if (steps !== undefined || workoutMinutes !== undefined) {
+                finalSteps = steps !== undefined ? Number(steps) : 0;
+                finalMinutes = workoutMinutes !== undefined ? Number(workoutMinutes) : 0;
+                finalDays = finalMinutes > 0 ? 1 : 0;
+            }
+            else {
+                if (!accessToken) {
+                    throw new error_middleware_1.ApiError(400, "Please provide metrics (steps, workoutMinutes) or a Google Access Token to sync");
+                }
+                const stats = await googlefit_service_1.GooglefitService.fetchFitnessMetrics(accessToken, user.email || "");
+                finalSteps = stats.steps;
+                finalMinutes = stats.workoutMinutes;
+                finalDays = stats.workoutDays;
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: { googleFitToken: accessToken }
+                });
+            }
             const fitnessMetrics = await prisma.fitnessMetrics.upsert({
                 where: { userId },
                 update: {
-                    workoutDays: stats.workoutDays,
-                    steps: stats.steps,
-                    workoutMinutes: stats.workoutMinutes,
+                    workoutDays: finalDays,
+                    steps: finalSteps,
+                    workoutMinutes: finalMinutes,
                     lastUpdated: new Date()
                 },
                 create: {
                     userId,
-                    workoutDays: stats.workoutDays,
-                    steps: stats.steps,
-                    workoutMinutes: stats.workoutMinutes
+                    workoutDays: finalDays,
+                    steps: finalSteps,
+                    workoutMinutes: finalMinutes
                 }
             });
             // Award XP for sync action
@@ -456,7 +557,7 @@ class DashboardController {
             });
             res.status(200).json({
                 success: true,
-                message: "Google Fit metrics synchronized successfully",
+                message: "Fitness metrics synchronized successfully",
                 fitness: fitnessMetrics
             });
         }
