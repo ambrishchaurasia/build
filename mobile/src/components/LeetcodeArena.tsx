@@ -89,9 +89,9 @@ export default function LeetcodeArena({ telemetry, goals, insights, onRefresh }:
 
     if (uncompleted.length === 0) {
       if (codingGoals.length > 0) {
-        return `All coding quests completed! ${fact}`;
+        return `All coding quests completed!`;
       }
-      return `No coding quests active. Add one above! ${fact}`;
+      return `No coding quests active. Add one above!`;
     }
 
     // Check for specific keywords
@@ -169,9 +169,6 @@ export default function LeetcodeArena({ telemetry, goals, insights, onRefresh }:
                     <View className="flex-1">
                       <Text className={`text-sm font-semibold ${todayCompleted ? "text-neutral-500 line-through" : "text-white"}`}>
                         {goal.title}
-                      </Text>
-                      <Text className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">
-                        {goal.frequency}{goal.title.toLowerCase().includes("potd") && ` • ${goal.currentStreak} Day Streak 🔥`}
                       </Text>
                     </View>
                   </TouchableOpacity>

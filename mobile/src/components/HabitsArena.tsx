@@ -40,9 +40,9 @@ export default function HabitsArena({ telemetry, goals, insights = [], onRefresh
 
     if (uncompleted.length === 0) {
       if (habitGoals.length > 0) {
-        return `All daily habits maintained! ${fact}`;
+        return `All habits checked for today!`;
       }
-      return `No habits active today. Add one above! ${fact}`;
+      return `No active habits. Add one above!`;
     }
 
     const firstQuest = uncompleted[0].title;
@@ -175,13 +175,13 @@ export default function HabitsArena({ telemetry, goals, insights = [], onRefresh
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-1.5">
             <Sparkles color="#FF840D" size={18} />
-            <Text className="text-sm font-bold text-white uppercase tracking-tight">Active Habit Streaks</Text>
+            <Text className="text-sm font-bold text-white uppercase tracking-tight">Active Habits</Text>
           </View>
         </View>
 
         <View className="flex-col gap-2.5">
           {habitGoals.length === 0 ? (
-            <Text className="text-xs text-neutral-500 py-4 text-center font-medium">No active streaks. Tapping "New Quest" in the banner above spawns one!</Text>
+            <Text className="text-xs text-neutral-500 py-4 text-center font-medium">No active habits. Tapping "New Quest" in the banner above spawns one!</Text>
           ) : (
             habitGoals.map((goal) => {
               const todayCompleted = goal.lastCompleted && new Date(goal.lastCompleted).toDateString() === new Date().toDateString();
@@ -209,9 +209,6 @@ export default function HabitsArena({ telemetry, goals, insights = [], onRefresh
                     <View className="flex-1">
                       <Text className={`text-sm font-semibold ${todayCompleted ? "text-neutral-500 line-through" : "text-white"}`}>
                         {goal.title}
-                      </Text>
-                      <Text className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">
-                        🔥 {goal.currentStreak} Day Streak (Max: {goal.maxStreak})
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -278,7 +275,7 @@ export default function HabitsArena({ telemetry, goals, insights = [], onRefresh
         <View className="flex-1 bg-black/60 justify-end">
           <View className="w-full bg-neutral-950 border-t border-neutral-850 rounded-t-3xl p-6 pb-12">
             <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-base font-black text-white uppercase tracking-tight">Spawn Habit Streak</Text>
+              <Text className="text-base font-black text-white uppercase tracking-tight">Spawn Habit</Text>
               <TouchableOpacity
                 onPress={() => setAddingGoal(false)}
                 className="px-3 py-1 bg-neutral-900 border border-neutral-850 rounded-xl"
@@ -289,7 +286,7 @@ export default function HabitsArena({ telemetry, goals, insights = [], onRefresh
 
             {/* Input field */}
             <View className="mb-6">
-              <Text className="text-xs font-bold text-neutral-450 uppercase mb-2">Streak Name</Text>
+              <Text className="text-xs font-bold text-neutral-450 uppercase mb-2">Habit Name</Text>
               <TextInput
                 value={newGoalTitle}
                 onChangeText={setNewGoalTitle}
@@ -309,7 +306,7 @@ export default function HabitsArena({ telemetry, goals, insights = [], onRefresh
               {loading ? (
                 <ActivityIndicator color="#0a0a0a" size="small" />
               ) : (
-                <Text className="text-neutral-950 font-black text-sm uppercase tracking-wider">Initialize Streak</Text>
+                <Text className="text-neutral-950 font-black text-sm uppercase tracking-wider">Initialize Habit</Text>
               )}
             </TouchableOpacity>
           </View>

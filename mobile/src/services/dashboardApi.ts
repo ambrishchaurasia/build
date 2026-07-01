@@ -35,8 +35,8 @@ export const dashboardApi = {
 
   onToggleGoalCallback: null as ((res: any) => void) | null,
 
-  toggleGoal: async (goalId: string) => {
-    const res = await apiClient.post(`/api/dashboard/goals/${goalId}/toggle`);
+  toggleGoal: async (goalId: string, date?: string) => {
+    const res = await apiClient.post(`/api/dashboard/goals/${goalId}/toggle`, { date });
     if (dashboardApi.onToggleGoalCallback) {
       dashboardApi.onToggleGoalCallback(res.data);
     }

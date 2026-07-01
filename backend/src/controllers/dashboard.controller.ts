@@ -324,6 +324,7 @@ export class DashboardController {
     try {
       const userId = req.user?.id!;
       const { goalId } = req.params;
+      const { date } = req.body;
 
       const goal = await prisma.goal.findFirst({
         where: { id: goalId, userId }
@@ -333,65 +334,105 @@ export class DashboardController {
         throw new ApiError(404, "Goal not found");
       }
 
-      const now = new Date();
-      const todayStr = now.toDateString();
+      const targetDate = date ? new Date(date) : new Date();
+      const targetDateStr = targetDate.toDateString();
 
-      // Check if already completed today
-      let alreadyCompleted = false;
-      if (goal.lastCompleted) {
-        alreadyCompleted = new Date(goal.lastCompleted).toDateString() === todayStr;
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const existingLog = await prisma.goalLog.findFirst({
+        where: {
+          goalId,
+          completedAt: { gte: startOfDay, lte: endOfDay }
+        }
+      });
+
+      let wasCompleted = false;
+
+      if (existingLog) {
+        // Uncomplete
+        await prisma.goalLog.delete({ where: { id: existingLog.id } });
+        wasCompleted = false;
+      } else {
+        // Complete
+        await prisma.goalLog.create({
+          data: { goalId, completedAt: targetDate }
+        });
+        wasCompleted = true;
       }
 
-      if (alreadyCompleted) {
-        // Delete today's goal completion log
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
+      // Recalculate streaks from all logs
+      const allLogs = await prisma.goalLog.findMany({
+        where: { goalId },
+        orderBy: { completedAt: "desc" }
+      });
 
-        const todayLog = await prisma.goalLog.findFirst({
-          where: {
-            goalId,
-            completedAt: {
-              gte: startOfDay,
-              lte: endOfDay
+      let currentStreak = 0;
+      let maxStreak = goal.maxStreak;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      if (allLogs.length > 0) {
+        // Build unique sorted dates array (descending)
+        const uniqueDates = Array.from(new Set(allLogs.map(l => {
+          const d = new Date(l.completedAt);
+          d.setHours(0,0,0,0);
+          return d.getTime();
+        })));
+        
+        let streak = 0;
+        let expectedTime = uniqueDates[0];
+        
+        // If the most recent log is not today or yesterday, streak is 0
+        const diffDays = Math.floor((today.getTime() - expectedTime) / (1000 * 60 * 60 * 24));
+        if (diffDays > 1) {
+          currentStreak = 0;
+        } else {
+          for (let i = 0; i < uniqueDates.length; i++) {
+            if (uniqueDates[i] === expectedTime) {
+              streak++;
+              expectedTime -= (1000 * 60 * 60 * 24); // subtract 1 day
+            } else {
+              break;
             }
           }
-        });
-
-        if (todayLog) {
-          await prisma.goalLog.delete({
-            where: { id: todayLog.id }
-          });
+          currentStreak = streak;
         }
+        maxStreak = Math.max(maxStreak, currentStreak);
+      }
 
-        // Find previous log date if exists to reset lastCompleted
-        const lastLog = await prisma.goalLog.findFirst({
-          where: { goalId },
-          orderBy: { completedAt: "desc" }
-        });
-        const prevCompletedDate = lastLog ? lastLog.completedAt : null;
+      const updatedGoal = await prisma.goal.update({
+        where: { id: goalId },
+        data: {
+          currentStreak,
+          maxStreak,
+          lastCompleted: allLogs.length > 0 ? allLogs[0].completedAt : null
+        }
+      });
 
-        // Decrement streak on the goal
-        const updatedGoal = await prisma.goal.update({
-          where: { id: goalId },
-          data: {
-            currentStreak: Math.max(0, goal.currentStreak - 1),
-            lastCompleted: prevCompletedDate
-          }
-        });
+      // Award or Deduct XP ONLY if they are toggling TODAY'S task
+      const now = new Date();
+      const todayStr = now.toDateString();
+      
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      let levelUp = false;
+      let level = user?.level || 1;
+      let newXp = user?.xp || 0;
+      let pointsDeducted = 0;
+      let pointsGained = 0;
+      let allTasksCompleted = false;
 
-        // Deduct XP and token from User ONLY if they previously had all tasks completed
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        let pointsDeducted = 0;
-        if (user) {
-          const allGoals = await prisma.goal.findMany({ where: { userId } });
-          const activeGoals = allGoals.filter(g => g.isActive && isGoalActiveToday(g));
+      if (user && targetDateStr === todayStr) {
+        const allGoals = await prisma.goal.findMany({ where: { userId } });
+        const activeGoals = allGoals.filter(g => g.isActive && isGoalActiveToday(g));
 
-          // Count completed active goals today BEFORE this uncompletion.
-          // Since the database wasn't refreshed yet, this goal was counted completed.
+        if (!wasCompleted) {
+          // Uncompleted today's task. Deduct XP if they previously had all tasks completed.
+          // Before this uncompletion, count how many were completed.
           const completedCount = activeGoals.filter(g => {
-            if (g.id === goalId) return true;
+            if (g.id === goalId) return true; // We assume it was true before uncompleting
             if (!g.lastCompleted) return false;
             return new Date(g.lastCompleted).toDateString() === todayStr;
           }).length;
@@ -400,8 +441,8 @@ export class DashboardController {
             pointsDeducted = 5;
           }
 
-          const newXp = Math.max(0, user.xp - pointsDeducted);
-          const level = Math.floor(newXp / 1000) + 1;
+          newXp = Math.max(0, user.xp - pointsDeducted);
+          level = Math.floor(newXp / 1000) + 1;
           await prisma.user.update({
             where: { id: userId },
             data: {
@@ -410,107 +451,59 @@ export class DashboardController {
               tokens: Math.max(0, user.tokens - pointsDeducted)
             }
           });
-        }
-
-        return res.status(200).json({
-          success: true,
-          message: "Goal uncompleted successfully",
-          pointsDeducted,
-          goal: updatedGoal
-        });
-      }
-
-      // Calculate streak update
-      let newStreak = 1;
-      if (goal.lastCompleted) {
-        const lastCompletedDate = new Date(goal.lastCompleted);
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (lastCompletedDate.toDateString() === yesterday.toDateString()) {
-          newStreak = goal.currentStreak + 1;
-        } else if (lastCompletedDate.toDateString() === todayStr) {
-          newStreak = goal.currentStreak;
-        }
-      }
-
-      const updatedGoal = await prisma.goal.update({
-        where: { id: goalId },
-        data: {
-          currentStreak: newStreak,
-          maxStreak: Math.max(goal.maxStreak, newStreak),
-          lastCompleted: now
-        }
-      });
-
-      // Create completion log
-      await prisma.goalLog.create({
-        data: { goalId }
-      });
-
-      // Award XP for completion ONLY if they completed ALL tasks for today
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      let levelUp = false;
-      let level = 1;
-      let newXp = 0;
-      let pointsGained = 0;
-      let allTasksCompleted = false;
-
-      if (user) {
-        const allGoals = await prisma.goal.findMany({ where: { userId } });
-        const activeGoals = allGoals.filter(g => g.isActive && isGoalActiveToday(g));
-
-        // Count completed other active goals today
-        const completedOtherCount = activeGoals.filter(g => {
-          if (g.id === goalId) return false;
-          if (!g.lastCompleted) return false;
-          return new Date(g.lastCompleted).toDateString() === todayStr;
-        }).length;
-
-        if (activeGoals.length > 0 && completedOtherCount === activeGoals.length - 1) {
-          pointsGained = 5;
-          allTasksCompleted = true;
-        }
-
-        newXp = user.xp + pointsGained;
-        level = Math.floor(newXp / 1000) + 1;
-        levelUp = level > user.level;
-
-        // Check if we should update global login streak
-        let newGlobalStreak = user.streakDays;
-        let updateStreak = false;
-
-        if (!user.lastActiveDate) {
-          newGlobalStreak = 1;
-          updateStreak = true;
         } else {
-          const lastActiveStr = new Date(user.lastActiveDate).toDateString();
-          const yesterdayStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
-          if (lastActiveStr === yesterdayStr) {
-            newGlobalStreak = user.streakDays + 1;
-            updateStreak = true;
-          } else if (lastActiveStr !== todayStr) {
+          // Completed today's task. Award XP if all tasks are now completed.
+          const completedOtherCount = activeGoals.filter(g => {
+            if (g.id === goalId) return false;
+            if (!g.lastCompleted) return false;
+            return new Date(g.lastCompleted).toDateString() === todayStr;
+          }).length;
+
+          if (activeGoals.length > 0 && completedOtherCount === activeGoals.length - 1) {
+            pointsGained = 5;
+            allTasksCompleted = true;
+          }
+
+          newXp = user.xp + pointsGained;
+          level = Math.floor(newXp / 1000) + 1;
+          levelUp = level > user.level;
+
+          let newGlobalStreak = user.streakDays;
+          let updateStreak = false;
+
+          if (!user.lastActiveDate) {
             newGlobalStreak = 1;
             updateStreak = true;
+          } else {
+            const lastActiveStr = new Date(user.lastActiveDate).toDateString();
+            const yesterdayStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
+            if (lastActiveStr === yesterdayStr) {
+              newGlobalStreak = user.streakDays + 1;
+              updateStreak = true;
+            } else if (lastActiveStr !== todayStr) {
+              newGlobalStreak = 1;
+              updateStreak = true;
+            }
           }
-        }
 
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            xp: newXp,
-            level,
-            tokens: user.tokens + pointsGained,
-            streakDays: updateStreak ? newGlobalStreak : undefined,
-            lastActiveDate: now
-          }
-        });
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              xp: newXp,
+              level,
+              tokens: user.tokens + pointsGained,
+              streakDays: updateStreak ? newGlobalStreak : undefined,
+              lastActiveDate: now
+            }
+          });
+        }
       }
 
       res.status(200).json({
         success: true,
-        message: "Goal completed successfully!",
+        message: wasCompleted ? "Goal completed successfully!" : "Goal uncompleted successfully",
         xpGained: pointsGained,
+        pointsDeducted,
         tokensGained: pointsGained,
         allTasksCompleted,
         levelUp,

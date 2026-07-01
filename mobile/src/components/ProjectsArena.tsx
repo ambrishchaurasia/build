@@ -38,9 +38,9 @@ export default function ProjectsArena({ telemetry, goals, insights, onRefresh }:
 
     if (uncompleted.length === 0) {
       if (projectGoals.length > 0) {
-        return `All project goals completed! ${fact}`;
+        return `All project tasks completed!`;
       }
-      return `No project tasks active today. Add one above! ${fact}`;
+      return `No project tasks active. Add one above!`;
     }
 
     const firstQuest = uncompleted[0].title;
@@ -189,9 +189,6 @@ export default function ProjectsArena({ telemetry, goals, insights, onRefresh }:
                     <View className="flex-1">
                       <Text className={`text-sm font-semibold ${todayCompleted ? "text-neutral-500 line-through" : "text-white"}`}>
                         {goal.title}
-                      </Text>
-                      <Text className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">
-                        {goal.frequency}
                       </Text>
                     </View>
                   </TouchableOpacity>

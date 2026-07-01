@@ -53,23 +53,11 @@ export default function DailyTasks({ goals, onRefresh }: DailyTasksProps) {
     const selectedDate = getDateForOffset(selectedDayOffset);
     const isToday = selectedDayOffset === 0;
 
-    // Standard API toggling works for Today
-    if (isToday) {
-      try {
-        await dashboardApi.toggleGoal(goal.id);
-        await onRefresh();
-      } catch (err) {
-        console.error("Failed to toggle goal", err);
-      }
-    } else {
-      // For past days, the backend toggle API might still complete/incomplete based on current time
-      // But we can let it toggle and refresh metrics
-      try {
-        await dashboardApi.toggleGoal(goal.id);
-        await onRefresh();
-      } catch (err) {
-        console.error("Failed to toggle historical goal", err);
-      }
+    try {
+      await dashboardApi.toggleGoal(goal.id, selectedDate.toISOString());
+      await onRefresh();
+    } catch (err) {
+      console.error("Failed to toggle goal", err);
     }
   };
 

@@ -69,10 +69,10 @@ export default function FitnessArena({ telemetry, goals, insights, onRefresh }: 
     const fact = pool[dayIndex % pool.length];
 
     if (uncompleted.length === 0) {
-      if (activeQuests.length > 0) {
-        return `All physical and mental quests completed! ${fact}`;
+      if (fitnessGoals.length > 0) {
+        return `All fitness & mind quests completed!`;
       }
-      return `No fitness quests active today. Add a target above! ${fact}`;
+      return `No fitness quests active. Add one above!`;
     }
 
     const firstQuest = uncompleted[0].title.replace(/^\[(Mind|Fitness)\]\s*/i, "");
@@ -190,9 +190,6 @@ export default function FitnessArena({ telemetry, goals, insights, onRefresh }: 
                       <Text className={`text-sm font-semibold ${todayCompleted ? "text-neutral-500 line-through" : "text-white"}`}>
                         {displayTitle}
                       </Text>
-                      <Text className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">
-                        {goal.frequency} • {goal.currentStreak} Day Streak 🔥
-                      </Text>
                     </View>
                   </TouchableOpacity>
 
@@ -249,9 +246,6 @@ export default function FitnessArena({ telemetry, goals, insights, onRefresh }: 
                     <View className="flex-1">
                       <Text className={`text-sm font-semibold ${todayCompleted ? "text-neutral-500 line-through" : "text-white"}`}>
                         {displayTitle}
-                      </Text>
-                      <Text className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">
-                        {goal.frequency} • {goal.currentStreak} Day Streak 🔥
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -320,24 +314,28 @@ export default function FitnessArena({ telemetry, goals, insights, onRefresh }: 
               <Text className="text-xs font-semibold text-neutral-450 uppercase mb-2.5">Track Category</Text>
               <View className="flex-row gap-2">
                 {[
-                  { name: "Fitness (Body)", category: "FITNESS", color: "#00D084" },
-                  { name: "Mind (Focus)", category: "MIND", color: "#8b5cf6" }
-                ].map((item) => (
+                  { name: "Fitness", category: "FITNESS", icon: Dumbbell },
+                  { name: "Mind", category: "MIND", icon: Brain }
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isSelected = newQuestType === item.category;
+                  return (
                   <TouchableOpacity
                     key={item.category}
                     onPress={() => setNewQuestType(item.category as any)}
                     className={`px-3.5 py-2.5 rounded-xl border flex-row items-center gap-1.5 flex-1 justify-center ${
-                      newQuestType === item.category 
+                      isSelected 
                         ? "bg-neutral-900 border-neutral-700" 
                         : "bg-neutral-950 border-neutral-900"
                     }`}
                   >
-                    <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    <Icon color={isSelected ? "#ffffff" : "#737373"} size={14} />
                     <Text className={`text-xs font-bold ${
-                      newQuestType === item.category ? "text-white" : "text-neutral-500"
+                      isSelected ? "text-white" : "text-neutral-500"
                     }`}>{item.name}</Text>
                   </TouchableOpacity>
-                ))}
+                  );
+                })}
               </View>
             </View>
 
